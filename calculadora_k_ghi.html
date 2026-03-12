@@ -348,6 +348,37 @@
         .diff.negative { color: var(--error); }
         .diff.warning { color: var(--warning); }
 
+        /* Tabla de valores k de ficha técnica */
+        .k-ficha-table-container { margin-top: 15px; }
+        .k-ficha-table { width: 100%; border-collapse: collapse; font-size: 12px; background: white; border-radius: 4px; overflow: hidden; }
+        .k-ficha-table th { background: #F57C00; color: white; padding: 8px; text-align: center; }
+        .k-ficha-table td { padding: 6px 8px; text-align: center; border-bottom: 1px solid #eee; }
+        .k-ficha-table tr:nth-child(even) { background: #f9f9f9; }
+        .k-ficha-table .diff-col { font-weight: 600; }
+        .k-ficha-table .diff-pos { color: var(--success); }
+        .k-ficha-table .diff-neg { color: var(--error); }
+        .k-ficha-table .diff-warn { color: var(--warning); }
+
+        /* Proyectos Guardados */
+        .saved-projects { background: #E8F5E9; border-left: 4px solid var(--success); padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .saved-projects-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .saved-projects-header h4 { color: #2E7D32; margin: 0; font-size: 14px; }
+        .btn-small { background: var(--success); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-small:hover { background: #1B5E20; }
+        .saved-project-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 12px; border-radius: 4px; margin-bottom: 8px; font-size: 12px; }
+        .saved-project-item .project-name { font-weight: 600; color: var(--ghi-black); }
+        .saved-project-item .project-info { color: #666; font-size: 11px; }
+        .saved-project-actions { display: flex; gap: 5px; }
+        .btn-action { background: #2196F3; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; }
+        .btn-action.delete { background: var(--error); }
+        .btn-action:hover { opacity: 0.8; }
+        .no-projects { color: #666; font-size: 12px; font-style: italic; }
+
+        /* Botón exportar */
+        .export-btn-container { display: flex; align-items: center; justify-content: center; margin-left: auto; }
+        .btn-success { background: #28A745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .btn-success:hover { background: #1E7E34; }
+
         .conclusions { background: #E3F2FD; border-left: 4px solid #2196F3; padding: 20px; border-radius: 8px; margin: 20px 0; }
         .conclusions h4 { color: #1565C0; margin-bottom: 15px; }
         .conclusion-item { padding: 10px 0; border-bottom: 1px solid #BBDEFB; }
@@ -451,15 +482,17 @@
                         <div class="form-group">
                             <label>Espesor (mm) <span class="required">*</span></label>
                             <input type="text" id="espesor" placeholder="Ej: 125">
-                            <div class="unit">En mm (se convierte a m)</div>
+                            <div class="unit">Ver en plano</div>
                         </div>
                         <div class="form-group">
                             <label>Base (mm)</label>
                             <input type="text" id="base" placeholder="Ej: 10440">
+                            <div class="unit">Ver en plano</div>
                         </div>
                         <div class="form-group">
                             <label>Altura (mm)</label>
                             <input type="text" id="altura" placeholder="Ej: 2070">
+                            <div class="unit">Ver en plano</div>
                         </div>
                         <div class="form-group" style="display: flex; align-items: center;">
                             <div style="padding: 10px; background: #E3F2FD; border-radius: 8px; flex: 1;">
@@ -494,6 +527,15 @@
             <button class="btn btn-secondary" onclick="limpiarTodo()">
                 <span>🔄</span> Limpiar
             </button>
+        </div>
+
+        <!-- Proyectos Guardados -->
+        <div class="saved-projects" id="savedProjectsSection">
+            <div class="saved-projects-header">
+                <h4><span>💾</span> Proyectos Guardados</h4>
+                <button class="btn-small" onclick="guardarProyectoActual()">+ Guardar Actual</button>
+            </div>
+            <div id="savedProjectsList"></div>
         </div>
 
         <!-- Loading -->
@@ -561,6 +603,7 @@
             <div class="comparison-section" id="comparisonSection">
                 <h4>Comparacion con Ficha Tecnica</h4>
                 <div class="comparison-grid" id="comparisonGrid"></div>
+                <div id="k fichaTable" class="k-ficha-table-container"></div>
             </div>
 
             <div class="conclusions">
@@ -1520,10 +1563,15 @@
             htmlResumen += '</tbody></table>';
             document.getElementById('resumenHormigonBody').innerHTML = htmlResumen;
 
+            // Guardar resultados para exportación
+            resultadosCalculos = resultados;
+
+            // Mostrar funcionalidades
             mostrarGrafico(resultados);
             mostrarGraficoTemperaturas();
             mostrarComparacion(resultados);
             mostrarConclusiones(resultados);
+            mostrarTablaKFicha(resultados);
 
             document.getElementById('results').scrollIntoView({behavior: 'smooth'});
         }
@@ -1657,7 +1705,7 @@
                     tension: 0.1,
                     pointRadius: 1,
                     pointBackgroundColor: '#BDBDBD',
-                    borderDash: [3, 3],
+                    borderDash: [],
                     borderWidth: 1
                 });
             }
@@ -1667,15 +1715,15 @@
                 datasets.push({
                     label: 'T Rampa (Mesetas)',
                     data: datosTiempoReal.rampa,
-                    borderColor: '#FF5722',
-                    backgroundColor: 'rgba(255, 87, 34, 0.1)',
-                    fill: true,
-                    tension: 0.05,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#FF5722',
-                    pointBorderColor: 'white',
-                    pointBorderWidth: 2,
-                    borderWidth: 4
+                    borderColor: '#E31837',
+                    backgroundColor: 'rgba(227, 24, 55, 0.05)',
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#E31837',
+                    pointBorderColor: '#E31837',
+                    pointBorderWidth: 1,
+                    borderWidth: 5
                 });
             }
             
@@ -1803,7 +1851,7 @@
                     '<p>Termopares: ' + termoparesEnMeseta + '</p>' +
                     '<p>Temp ensayo: <strong>' + mejorTemp + '°C</strong></p>' +
                     '<p>Rango ficha: ' + tempsK[0] + '°C - ' + tempsK[tempsK.length-1] + '°C</p>' +
-                    '<p>k calculada: <strong>' + kMedia.toFixed(3) + ' W/(m·K)</strong></p>' +
+                    '<p>k calculada (' + mejorTemp + '°C): <strong>' + kMedia.toFixed(3) + ' W/(m·K)</strong></p>' +
                     '<p>k ficha técnica (' + mejorTemp + '°C): <strong>' + kInterpolado.toFixed(2) + ' W/(m·K)</strong></p>' +
                     '<div class="diff ' + diffClass + '">Diferencia: ' + Math.abs(diff).toFixed(1) + '%</div>' +
                     '</div>';
@@ -1857,6 +1905,60 @@
             container.innerHTML = html;
         }
 
+        // ============================================
+        // TABLA DE VALORES K DE FICHA TÉCNICA
+        // ============================================
+        function mostrarTablaKFicha(resultados) {
+            const container = document.getElementById('k fichaTable');
+            if (!resultados || resultados.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const hormigones = [...new Set(resultados.map(r => r.hormigon))];
+            let html = '';
+
+            hormigones.forEach(h => {
+                const hData = HormigonesDatabase.find(db => db.name === h);
+                if (!hData || !hData.k || Object.keys(hData.k).length === 0) return;
+
+                const resH = resultados.filter(r => r.hormigon === h);
+
+                html += '<h5 style="color: #F57C00; margin: 15px 0 8px 0;">' + h + ' - Valores de k</h5>';
+                html += '<table class="k-ficha-table">';
+                html += '<thead><tr><th>Temp (°C)</th><th>k Ficha</th><th>k Calculada</th><th>Dif. (%)</th></tr></thead>';
+                html += '<tbody>';
+
+                const tempsK = Object.keys(hData.k).map(Number).sort((a,b) => a-b);
+                tempsK.forEach(tempK => {
+                    const kFicha = hData.k[tempK];
+                    let kCalc = null;
+                    let diff = null;
+                    const medicionCercana = resH.find(r => Math.abs(r.temp - tempK) < 50);
+                    if (medicionCercana) {
+                        kCalc = medicionCercana.k;
+                        diff = ((kCalc - kFicha) / kFicha * 100);
+                    }
+
+                    let diffClass = '';
+                    if (diff !== null) {
+                        diffClass = Math.abs(diff) < 15 ? 'diff-pos' : (Math.abs(diff) < 30 ? 'diff-warn' : 'diff-neg');
+                    }
+
+                    html += '<tr>';
+                    html += '<td>' + tempK + '</td>';
+                    html += '<td>' + kFicha.toFixed(2) + '</td>';
+                    html += '<td>' + (kCalc !== null ? kCalc.toFixed(3) : '-') + '</td>';
+                    html += '<td class="diff-col ' + diffClass + '">' + (diff !== null ? diff.toFixed(1) + '%' : '-') + '</td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+            });
+
+            container.innerHTML = html;
+        }
+
         // Limpiar
         function limpiarTodo() {
             document.getElementById('proyecto').value = '';
@@ -1875,6 +1977,236 @@
             currentSheet = null;
             thermoparesDetectados = [];
         }
+
+        // ============================================
+        // PROYECTOS GUARDADOS (localStorage)
+        // ============================================
+        const STORAGE_KEY = 'ghi_proyectos_guardados';
+
+        function obtenerProyectosGuardados() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function guardarProyectosEnStorage(proyectos) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(proyectos));
+        }
+
+        function guardarProyectoActual() {
+            const proyecto = document.getElementById('proyecto').value.trim();
+            const masa = document.getElementById('masa').value.trim();
+            const espesor = document.getElementById('espesor').value.trim();
+            const base = document.getElementById('base').value.trim();
+            const altura = document.getElementById('altura').value.trim();
+            const hormigon = document.getElementById('hormigonSelect').value;
+            const cpInput = document.getElementById('cp').value.trim();
+
+            if (!proyecto) {
+                alert('Por favor, introduce un nombre de proyecto');
+                return;
+            }
+
+            const proyectos = obtenerProyectosGuardados();
+
+            // Verificar si ya existe
+            const existente = proyectos.findIndex(p => p.nombre === proyecto);
+            if (existente >= 0) {
+                if (!confirm('El proyecto "' + proyecto + '" ya existe. ¿Sobrescribir?')) {
+                    return;
+                }
+            }
+
+            const nuevoProyecto = {
+                nombre: proyecto,
+                masa: masa,
+                espesor: espesor,
+                base: base,
+                altura: altura,
+                hormigon: hormigon,
+                cp: cpInput,
+                fecha: new Date().toLocaleDateString()
+            };
+
+            if (existente >= 0) {
+                proyectos[existente] = nuevoProyecto;
+            } else {
+                proyectos.push(nuevoProyecto);
+            }
+
+            guardarProyectosEnStorage(proyectos);
+            mostrarProyectosGuardados();
+            alert('Proyecto "' + proyecto + '" guardado correctamente');
+        }
+
+        function cargarProyecto(nombre) {
+            const proyectos = obtenerProyectosGuardados();
+            const proyecto = proyectos.find(p => p.nombre === nombre);
+
+            if (!proyecto) {
+                alert('Proyecto no encontrado');
+                return;
+            }
+
+            document.getElementById('proyecto').value = proyecto.nombre || '';
+            document.getElementById('masa').value = proyecto.masa || '';
+            document.getElementById('espesor').value = proyecto.espesor || '';
+            document.getElementById('base').value = proyecto.base || '';
+            document.getElementById('altura').value = proyecto.altura || '';
+            document.getElementById('hormigonSelect').value = proyecto.hormigon || '';
+            document.getElementById('cp').value = proyecto.cp || '';
+
+            // Recalcular área si hay valores
+            calcularArea();
+
+            // Mostrar recomendación de Cp
+            if (proyecto.hormigon) {
+                mostrarCpRecommendation(proyecto.hormigon);
+            }
+
+            alert('Proyecto "' + nombre + '" cargado');
+        }
+
+        function eliminarProyecto(nombre) {
+            if (!confirm('¿Eliminar el proyecto "' + nombre + '"?')) {
+                return;
+            }
+
+            let proyectos = obtenerProyectosGuardados();
+            proyectos = proyectos.filter(p => p.nombre !== nombre);
+            guardarProyectosEnStorage(proyectos);
+            mostrarProyectosGuardados();
+        }
+
+        function mostrarProyectosGuardados() {
+            const container = document.getElementById('savedProjectsList');
+            const proyectos = obtenerProyectosGuardados();
+
+            if (proyectos.length === 0) {
+                container.innerHTML = '<div class="no-projects">No hay proyectos guardados</div>';
+                return;
+            }
+
+            let html = '';
+            proyectos.forEach(p => {
+                html += '<div class="saved-project-item">' +
+                    '<div>' +
+                    '<div class="project-name">' + p.nombre + '</div>' +
+                    '<div class="project-info">' +
+                    (p.hormigon ? p.hormigon + ' | ' : '') +
+                    (p.masa ? p.masa + ' kg | ' : '') +
+                    (p.espesor ? p.espesor + ' mm' : '') +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="saved-project-actions">' +
+                    '<button class="btn-action" onclick="cargarProyecto(\'' + p.nombre + '\')">Cargar</button>' +
+                    '<button class="btn-action delete" onclick="eliminarProyecto(\'' + p.nombre + '\')">X</button>' +
+                    '</div>' +
+                    '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // ============================================
+        // EXPORTAR A EXCEL
+        // ============================================
+        function exportarAExcel() {
+            if (!excelData || !resultadosCalculos) {
+                alert('No hay resultados para exportar. Primero calcula los valores.');
+                return;
+            }
+
+            const proyecto = document.getElementById('proyecto').value || 'proyecto';
+            const fecha = new Date().toISOString().split('T')[0];
+            const filename = proyecto + '_resultados_k_' + fecha + '.xlsx';
+
+            const wb = XLSX.utils.book_new();
+
+            // Hoja 1: Resultados por medición
+            const resultadosData = [['Termopar', 'Hormigon', 'Meseta (°C)', 'T Rampa', 'T cara caliente', 'T cara fria', 'ΔT Caras', 'ΔT Aislante', 'k (W/m·K)']];
+            resultadosCalculos.forEach(r => {
+                resultadosData.push([
+                    r.termopar,
+                    r.hormigon,
+                    r.temp,
+                    r.tempRampa,
+                    r.tempCaliente,
+                    r.tempFria,
+                    r.deltaT.toFixed(2),
+                    r.deltaTAislante ? r.deltaTAislante.toFixed(2) : '-',
+                    r.k.toFixed(4)
+                ]);
+            });
+            const ws1 = XLSX.utils.aoa_to_sheet(resultadosData);
+            XLSX.utils.book_append_sheet(wb, ws1, 'Resultados');
+
+            // Hoja 2: Resumen por hormigón
+            const summaryData = [['Hormigon', 'k media (W/m·K)', 'k min', 'k max', 'Num. mediciones']];
+            const hormigones = [...new Set(resultadosCalculos.map(r => r.hormigon))];
+            hormigones.forEach(h => {
+                const resH = resultadosCalculos.filter(r => r.hormigon === h);
+                const kAvg = resH.reduce((sum, r) => sum + r.k, 0) / resH.length;
+                const kMin = Math.min(...resH.map(r => r.k));
+                const kMax = Math.max(...resH.map(r => r.k));
+                summaryData.push([h, kAvg.toFixed(4), kMin.toFixed(4), kMax.toFixed(4), resH.length]);
+            });
+            const ws2 = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, ws2, 'Resumen Hormigones');
+
+            // Hoja 3: Comparación con ficha técnica
+            const compData = [['Hormigon', 'Temp ensayo (°C)', 'k calculada', 'k ficha (interpolada)', 'Diferencia (%)']];
+            hormigones.forEach(h => {
+                const hData = HormigonesDatabase.find(db => db.name === h);
+                if (hData && hData.k && Object.keys(hData.k).length > 0) {
+                    const resH = resultadosCalculos.filter(r => r.hormigon === h);
+                    const tempsUnicas = [...new Set(resH.map(r => r.temp))];
+                    tempsUnicas.forEach(temp => {
+                        const resTemp = resH.filter(r => r.temp === temp);
+                        const kMedia = resTemp.reduce((sum, r) => sum + r.k, 0) / resTemp.length;
+                        const kInterp = interpolarK(hData.k, temp);
+                        const diff = ((kMedia - kInterp) / kInterp * 100);
+                        compData.push([h, temp, kMedia.toFixed(4), kInterp.toFixed(2), diff.toFixed(1)]);
+                    });
+                }
+            });
+            const ws3 = XLSX.utils.aoa_to_sheet(compData);
+            XLSX.utils.book_append_sheet(wb, ws3, 'Comparacion Ficha');
+
+            XLSX.writeFile(wb, filename);
+        }
+
+        function interpolarK(kData, temp) {
+            const tempsK = Object.keys(kData).map(Number).sort((a,b) => a-b);
+            if (tempsK.includes(temp)) {
+                return kData[temp];
+            }
+            if (temp < tempsK[0]) {
+                const kInf = kData[tempsK[0]];
+                const kSup = kData[tempsK[1]];
+                return kInf + (kSup - kInf) * (temp - tempsK[0]) / (tempsK[1] - tempsK[0]);
+            }
+            if (temp > tempsK[tempsK.length-1]) {
+                const kInf = kData[tempsK[tempsK.length-2]];
+                const kSup = kData[tempsK[tempsK.length-1]];
+                return kInf + (kSup - kInf) * (temp - tempsK[tempsK.length-2]) / (tempsK[tempsK.length-1] - tempsK[tempsK.length-2]);
+            }
+            for (let i = 0; i < tempsK.length - 1; i++) {
+                if (temp > tempsK[i] && temp < tempsK[i+1]) {
+                    const kInf = kData[tempsK[i]];
+                    const kSup = kData[tempsK[i+1]];
+                    return kInf + (kSup - kInf) * (temp - tempsK[i]) / (tempsK[i+1] - tempsK[i]);
+                }
+            }
+            return 0;
+        }
+
+        // Variable global para almacenar los resultados
+        let resultadosCalculos = [];
+
+        // Inicializar proyectos guardados al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            mostrarProyectosGuardados();
+        });
     </script>
 </body>
 </html>
